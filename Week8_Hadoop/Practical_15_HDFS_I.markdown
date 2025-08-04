@@ -1,32 +1,108 @@
-# CMP701 Practical 15: Hadoop Distributed File System (HDFS I)
+# CMP701 Practical 15: Hadoop Distributed File System (HDFS I) v1.1
 
 ## Introduction
 
-This practical introduces the **Hadoop Distributed File System (HDFS)**, a distributed file system designed for storing large datasets across multiple servers in a Hadoop cluster. Unlike a local Linux file system, HDFS provides fault tolerance and parallel data processing, making it essential for Hadoop-based data analysis. You will learn to manage files on HDFS using command-line tools, download datasets from the internet, transfer them to HDFS, retrieve files, merge datasets, and organize directories within HDFS.
+This practical introduces the **Hadoop Distributed File System (HDFS)**, a distributed file system designed for storing large datasets across multiple servers in a Hadoop cluster. Unlike a local Linux file system, HDFS provides fault tolerance and parallel data processing, making it essential for Hadoop-based data analysis. You will learn to set up SSH access, manage files on HDFS using command-line tools, download datasets from the internet, transfer them to HDFS, retrieve files, merge datasets, and organize directories within HDFS.
 
 ### Objectives
-- Connect to a Linux-based Hadoop host using PuTTY.
+- Set up and verify Docker containers for the Hadoop sandbox.
+- Connect to a Linux-based Hadoop host using PuTTY, including resetting the root password if needed.
 - Download datasets to the local Linux file system and upload them to HDFS.
 - Use HDFS commands to manage files and directories (`-put`, `-get`, `-du`, `-getmerge`, `-cp`).
 - Transfer files from the Linux VM to your local computer using FileZilla.
 - Understand the workflow of moving data between local storage, HDFS, and your personal machine.
 
-## Task 0: Connect to Your Hadoop Host
+## Part A: Setup and SSH Access
 
-**Objective**: Establish a connection to the Linux-based Hadoop host.
+### Task A1: Start Hadoop Sandbox in Docker
+**Objective**: Ensure the Hadoop sandbox containers are running.
+
+**Activity**:
+- Open **Docker Desktop** on your computer and wait for it to show as running (green status).
+- Open a terminal (e.g., Command Prompt or Git Bash) and start the Hadoop containers:
+  ```bash
+  docker start sandbox-hdp
+  docker start sandbox-proxy
+  ```
+- Verify the containers are running:
+  ```bash
+  docker ps
+  ```
+  - **Expected Output**:
+    ```
+    CONTAINER ID   IMAGE                     ...   NAMES
+    <id>           hortonworks/sandbox-hdp   ...   sandbox-hdp
+    <id>           hortonworks/sandbox-proxy ...   sandbox-proxy
+    ```
+- **Why**: The `sandbox-hdp` container hosts the Hadoop environment, and `sandbox-proxy` exposes ports like 2222 for SSH access. Both must be running to proceed.
+
+### Task A2: Verify SSH Port Mapping
+**Objective**: Confirm that SSH is accessible on port 2222.
+
+**Activity**:
+- Check the port mapping for the proxy container:
+  ```bash
+  docker port sandbox-proxy
+  ```
+  - **Expected Output**:
+    ```
+    2222/tcp -> 0.0.0.0:2222
+    ```
+- **Why**: This confirms that SSH connections to `sandbox.hortonworks.com` on port 2222 are routed correctly through the proxy container.
+
+### Task A3: Connect to Your Hadoop Host
+**Objective**: Establish a connection to the Linux-based Hadoop host using PuTTY.
 
 **Activity**:
 - **Launch PuTTY**: Open PuTTY, a tool for remotely accessing Linux systems.
-- **Enter Connection Details**: In the "Host Name (or IP address)" field, input `sandbox.hortonworks.com` and set the port to `2222`. Click "Open." On first connection, accept the security alert to add the server's key fingerprint to PuTTY's record.
+- **Enter Connection Details**:
+  - In the "Host Name (or IP address)" field, input `sandbox.hortonworks.com`.
+  - Set the port to `2222`.
+  - Ensure "Connection type" is set to SSH.
+  - Click "Open."
+- **Security Alert**: On first connection, accept the security alert to add the server's key fingerprint to PuTTY's record.
 - **Login**:
   - **Username**: `root`
-  - **Password**: Use `hadoop` for the first login. You will be prompted to confirm this password and set a new password for the `root` user. Use this new password for subsequent logins.
-- **Expected Outcome**: A terminal prompt appears (e.g., `[root@localhost ~]#`), indicating a successful connection.
+  - **Password**: Try `hadoop` for the first login. If access is denied, proceed to Task A4 to reset the password.
+- **Expected Outcome**: A terminal prompt appears (e.g., `[root@sandbox-hdp ~]#`), indicating a successful connection.
+- **Why**: This establishes access to the Linux virtual machine (VM) hosting the Hadoop environment, allowing you to interact with both the local file system and HDFS.
 
-**Why**: This establishes access to the Linux virtual machine (VM) hosting the Hadoop environment, allowing you to interact with both the local file system and HDFS.
+### Task A4: Reset Root Password (If Needed)
+**Objective**: Reset the root password if SSH login fails with "Access denied."
 
-## Task 1: Create a Local Staging Directory
+**Activity**:
+- Access the container directly (bypassing SSH):
+  ```bash
+  docker exec -it sandbox-hdp bash
+  ```
+- Reset the root password:
+  ```bash
+  passwd root
+  ```
+  - Enter a new password (at least 8 characters, e.g., `hadoop123`):
+    ```
+    New password: hadoop123
+    Retype new password: hadoop123
+    ```
+  - **Expected Output**:
+    ```
+    passwd: password updated successfully
+    ```
+  - If you see "Sorry, passwords do not match," retype carefully.
+- Exit the container:
+  ```bash
+  exit
+  ```
+- Retry SSH login via PuTTY with:
+  - Host: `sandbox.hortonworks.com`
+  - Port: `2222`
+  - Username: `root`
+  - Password: `hadoop123`
+- **Why**: Resetting the password ensures you can access the sandbox if the default password (`hadoop`) fails or was changed previously.
 
+## Part B: Working with HDFS
+
+### Task B1: Create a Local Staging Directory
 **Objective**: Set up a local directory to store downloaded datasets before uploading to HDFS.
 
 **Activity**:
@@ -38,11 +114,9 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
   ```bash
   cd /localDatasets
   ```
+- **Why**: The `/localDatasets` directory acts as a staging area on the Linux file system, similar to a "Downloads" folder, where datasets are temporarily stored before being transferred to HDFS.
 
-**Why**: The `/localDatasets` directory acts as a staging area on the Linux file system, similar to a "Downloads" folder, where datasets are temporarily stored before being transferred to HDFS.
-
-## Task 2: Download Datasets from the Web
-
+### Task B2: Download Datasets from the Web
 **Objective**: Download two San Francisco salary datasets to the local file system.
 
 **Activity**:
@@ -55,16 +129,14 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
   ```bash
   ls
   ```
-  - Expected Output:
+  - **Expected Output**:
     ```
     sf-salaries-2011-2013.csv  sf-salaries-2014.csv
     ```
-- **Note**: You can paste URLs into PuTTY by right-clicking in the terminal.
+- **Note**: You can paste URLs into PuTTY by right-clicking in the terminal. If `wget` fails, ensure you typed the URL correctly or check your internet connection.
+- **Why**: These datasets (CSV files containing salary data) will be used for Hadoop processing. Downloading them to the local file system is the first step before uploading to HDFS, where Hadoop can access them.
 
-**Why**: These datasets (CSV files containing salary data) will be used for Hadoop processing. Downloading them to the local file system is the first step before uploading to HDFS, where Hadoop can access them.
-
-## Task 3: Prepare HDFS and Upload Files
-
+### Task B3: Prepare HDFS and Upload Files
 **Objective**: Switch to the HDFS user to configure permissions, create directories in HDFS, and upload files from the local file system.
 
 **Activity**:
@@ -98,10 +170,10 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
      ```bash
      hdfs dfs -ls /user/hadoop
      ```
-     - Expected Output:
+     - **Expected Output**:
        ```
-       drwxrwxrwx   - root hadoop          0 2025-07-29 13:42 /user/hadoop/sf-salaries-2011-2013
-       drwxrwxrwx   - root hadoop          0 2025-07-29 13:42 /user/hadoop/sf-salaries-2014
+       drwxrwxrwx   - root hadoop          0 2025-08-04 13:42 /user/hadoop/sf-salaries-2011-2013
+       drwxrwxrwx   - root hadoop          0 2025-08-04 13:42 /user/hadoop/sf-salaries-2014
        ```
    - **Note**: Using `ls /user/hadoop` (without `hdfs dfs`) will result in an error because it targets the local file system, not HDFS.
    - **Why**: HDFS requires a structured directory hierarchy to organize data. These directories will store the salary datasets.
@@ -120,15 +192,14 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
      hdfs dfs -ls /user/hadoop/sf-salaries-2011-2013
      hdfs dfs -ls /user/hadoop/sf-salaries-2014
      ```
-     - Expected Output:
+     - **Expected Output**:
        ```
-       -rw-r--r--   3 root hadoop   <size> 2025-07-29 13:42 /user/hadoop/sf-salaries-2011-2013/sf-salaries-2011-2013.csv
-       -rw-r--r--   3 root hadoop   <size> 2025-07-29 13:42 /user/hadoop/sf-salaries-2014/sf-salaries-2014.csv
+       -rw-r--r--   3 root hadoop   <size> 2025-08-04 13:42 /user/hadoop/sf-salaries-2011-2013/sf-salaries-2011-2013.csv
+       -rw-r--r--   3 root hadoop   <size> 2025-08-04 13:42 /user/hadoop/sf-salaries-2014/sf-salaries-2014.csv
        ```
    - **Why**: The `hdfs dfs -put` command transfers files from the local file system to HDFS, making them accessible for Hadoop processing.
 
-## Task 4: Check File Sizes in HDFS
-
+### Task B4: Check File Sizes in HDFS
 **Objective**: Determine the storage usage of files and directories in HDFS.
 
 **Activity**:
@@ -141,11 +212,9 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
   hdfs dfs -du /user/hadoop/sf-salaries-2014/sf-salaries-2014.csv
   ```
 - **Output**: Displays sizes in bytes (e.g., `123456789 /user/hadoop/sf-salaries-2014/sf-salaries-2014.csv`).
+- **Why**: The `-du` command helps monitor storage usage, which is critical for managing resources in a distributed system like HDFS.
 
-**Why**: The `-du` command helps monitor storage usage, which is critical for managing resources in a distributed system like HDFS.
-
-## Task 5: Retrieve Files from HDFS to Local File System
-
+### Task B5: Retrieve Files from HDFS to Local File System
 **Objective**: Copy a file from HDFS back to the local Linux file system.
 
 **Activity**:
@@ -161,15 +230,13 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
   ```bash
   ls /returnedDatasets
   ```
-  - Expected Output:
+  - **Expected Output**:
     ```
     sf-salaries-2011-2013.csv
     ```
+- **Why**: After processing data in Hadoop, you may need to retrieve results to the local file system for further analysis or transfer to your personal computer.
 
-**Why**: After processing data in Hadoop, you may need to retrieve results to the local file system for further analysis or transfer to your personal computer.
-
-## Task 6: Transfer Files to Your Local Computer
-
+### Task B6: Transfer Files to Your Local Computer
 **Objective**: Use FileZilla to transfer a file from the Linux VM to your personal computer.
 
 **Activity**:
@@ -182,17 +249,15 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
     - **Port**: `2222`
     - **Logon Type**: Normal
     - **Username**: `root`
-    - **Password**: Your `root` password (set in Practical 13 or 14).
+    - **Password**: Your `root` password (e.g., `hadoop123`).
   - Click **Connect**.
 - Navigate to `/returnedDatasets` in the remote file tree (right side).
 - Select a local folder on your computer (left side).
 - Drag `sf-salaries-2011-2013.csv` from the remote to the local folder to download.
 - Verify the file is accessible on your computer (e.g., open in Excel).
+- **Why**: Transferring files to your local machine allows you to analyze data using tools like Excel or share results outside the Hadoop environment.
 
-**Why**: Transferring files to your local machine allows you to analyze data using tools like Excel or share results outside the Hadoop environment.
-
-## Task 7: Merge Files from HDFS
-
+### Task B7: Merge Files from HDFS
 **Objective**: Combine multiple HDFS files into a single local file.
 
 **Activity**:
@@ -204,40 +269,39 @@ This practical introduces the **Hadoop Distributed File System (HDFS)**, a distr
   ```bash
   wc -l /returnedDatasets/testMerge.csv
   ```
-  - Expected Output: Approximately 158,000 rows (combined data from both datasets).
-- Transfer `testMerge.csv` to your local computer using FileZilla (follow Task 6 steps).
+  - **Expected Output**: Approximately 158,000 rows (combined data from both datasets).
+- Transfer `testMerge.csv` to your local computer using FileZilla (follow Task B6 steps).
 - Verify the row count in Excel on your local machine.
+- **Why**: Hadoop jobs often produce multiple output files. The `-getmerge` command consolidates them into a single file for easier analysis.
 
-**Why**: Hadoop jobs often produce multiple output files. The `-getmerge` command consolidates them into a single file for easier analysis.
-
-## Task 8: Copy Directories in HDFS
-
+### Task B8: Copy Directories in HDFS
 **Objective**: Copy directories within HDFS to organize data.
 
 **Activity**:
 - Copy the salary directories to a new HDFS directory:
   ```bash
-  hdfs dfs -cp /user/hadoop/sf-salaries-2011-2013 /user/hadoop/sf-salaries-2014 /user/hadoop/salaries
+  hdfs dfs -cp /user/hadoop/sf-salaries-2011-2013 /user/hadoop/salaries
+  hdfs dfs -cp /user/hadoop/sf-salaries-2014 /user/hadoop/salaries
   ```
 - Verify:
   ```bash
   hdfs dfs -ls /user/hadoop/salaries
   ```
-  - Expected Output:
+  - **Expected Output**:
     ```
-    drwxr-xr-x   - root hadoop          0 2025-07-29 13:42 /user/hadoop/salaries/sf-salaries-2011-2013
-    drwxr-xr-x   - root hadoop          0 2025-07-29 13:42 /user/hadoop/salaries/sf-salaries-2014
+    drwxr-xr-x   - root hadoop          0 2025-08-04 13:42 /user/hadoop/salaries/sf-salaries-2011-2013
+    drwxr-xr-x   - root hadoop          0 2025-08-04 13:42 /user/hadoop/salaries/sf-salaries-2014
     ```
-
-**Why**: The `-cp` command allows you to reorganize data within HDFS, which is useful for structuring datasets for Hadoop jobs.
+- **Why**: The `-cp` command allows you to reorganize data within HDFS, which is useful for structuring datasets for Hadoop jobs.
 
 ## Conclusion
-
 This practical introduced you to managing files on HDFS, a critical component of Hadoop:
+- Set up Docker containers and verified SSH access.
+- Reset the root password if needed to ensure connectivity.
 - Connected to the Hadoop host and set up a local staging directory.
 - Downloaded datasets and uploaded them to HDFS using `hdfs dfs -put`.
 - Managed HDFS files with commands like `-ls`, `-du`, `-get`, `-getmerge`, and `-cp`.
 - Transferred files to your local computer using FileZilla.
-- Learned the workflow: **Download → Stage Locally → Upload to HDFS → Process → Retrieve**.
+- Learned the workflow: **Start Docker → Connect via SSH → Download → Stage Locally → Upload to HDFS → Process → Retrieve**.
 
 These skills are foundational for Hadoop data processing, as all analysis jobs require data to be stored in HDFS. For further practice, explore additional HDFS commands (e.g., `hdfs dfs -cat` to view file contents) or refer to the Hadoop documentation (`hdfs dfs -help`).
