@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This practical builds on **Practical 15 – HDFS I**, where you managed the Hadoop Distributed File System (HDFS) using command-line tools. Here, you’ll perform similar tasks—creating directories, uploading files, viewing file details, downloading files, concatenating files, and copying directories—using the **Ambari web interface**, specifically its **Files View**. Ambari provides a user-friendly, graphical alternative to command-line operations, making HDFS management accessible to users less comfortable with terminal commands. This is common in enterprise environments where web-based tools simplify cluster management.
+This practical builds on **Practical 15 – HDFS I**, where you managed the Hadoop Distributed File System (HDFS) using command-line tools. Here, you’ll perform similar tasks creating directories, uploading files, viewing file details, downloading files, concatenating files, and copying directories using the **Ambari web interface**, specifically its **Files View**. Ambari provides a user-friendly, graphical alternative to command-line operations, making HDFS management accessible to users less comfortable with terminal commands. This is common in enterprise environments where web-based tools simplify cluster management.
 
 ### Objectives
 - Access the Hadoop cluster via Ambari’s web interface.
