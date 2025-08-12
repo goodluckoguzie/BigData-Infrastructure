@@ -22,11 +22,11 @@ This practical introduces **Apache Spark**, a powerful big data processing engin
 ## Part A – Setup and Access
 
 ### Task A1: Start Your Hadoop Sandbox
-**Objective**: Ensure the Hadoop sandbox is running in Docker.
+**Objective**: Ensure the Hadoop sandbox is running in Docker with correctly configured containers.
 
 **Activity**:
 1. Open **Docker Desktop** and wait for it to show as running (green status).
-2. Check if the `sandbox-hdp` container is running:
+2. Check running containers:
    ```bash
    docker ps
    ```
@@ -38,44 +38,44 @@ This practical introduces **Apache Spark**, a powerful big data processing engin
    ```bash
    docker network connect bridge sandbox-hdp
    ```
-5. Check if the `sandbox-proxy` container exists:
+5. Check for existing containers, including stopped ones:
    ```bash
    docker ps -a
    ```
-   - If a container named `cool_aryabhata` or another auto-generated name appears instead of `sandbox-proxy`, rename it:
+   - If a container named `cool_aryabhata` or another auto-generated name exists (using `hortonworks/sandbox-proxy:1.0`), it may indicate a misconfigured proxy. Remove it:
      ```bash
-     docker rename cool_aryabhata sandbox-proxy
+     docker rm -f cool_aryabhata
      ```
-   - If a `sandbox-proxy` container exists but is stopped or misconfigured, remove it:
+   - If a `sandbox-proxy` container exists but is stopped or misconfigured (e.g., missing port mappings like `2222->22/tcp`), remove it:
      ```bash
-     docker rm sandbox-proxy
+     docker rm -f sandbox-proxy
      ```
-   - If no `sandbox-proxy` container exists or after removal, create it with the correct port mappings:
+   - Create a new `sandbox-proxy` container with the correct port mappings:
      ```bash
      docker run -d --name sandbox-proxy --network bridge -p 2222:22 -p 4200:4200 -p 8020:8020 -p 8042:8042 -p 8080:8080 -p 8188:8188 -p 8983:8983 -p 10000:10000 -p 10001:10001 -p 10002:10002 -p 11000:11000 -p 15000:15000 -p 16000:16000 -p 18080:18080 -p 19888:19888 -p 21000:21000 -p 33553:33553 -p 39419:39419 -p 42111:42111 -p 50070:50070 -p 50075:50075 -p 50090:50090 -p 50111:50111 -p 60000:60000 -p 60080:60080 -p 61080:61080 -p 61888:61888 -p 62000:62000 hortonworks/sandbox-proxy:1.0
      ```
-6. Verify both containers are running:
+6. Verify both containers are running with correct port mappings:
    ```bash
    docker ps
    ```
    **Expected Output**:
    ```
-   CONTAINER ID   IMAGE                           ...   NAMES
-   <id>           hortonworks/sandbox-hdp:2.6.5   ...   sandbox-hdp
-   <id>           hortonworks/sandbox-proxy:1.0   ...   sandbox-proxy
+   CONTAINER ID   IMAGE                           ...   NAMES           PORTS
+   <id>           hortonworks/sandbox-hdp:2.6.5   ...   sandbox-hdp     ...
+   <id>           hortonworks/sandbox-proxy:1.0   ...   sandbox-proxy   ... 0.0.0.0:2222->22/tcp ...
    ```
 
-**Why**: The `sandbox-hdp` container hosts Hadoop and Spark, while `sandbox-proxy` exposes ports (e.g., 2222 for SSH) for external access. Both must be active, correctly named, and networked for the lab to proceed.
+**Why**: The `sandbox-hdp` container hosts Hadoop and Spark, while `sandbox-proxy` exposes ports (e.g., 2222 for SSH) for external access. Both must be active, correctly named, and networked to avoid conflicts or misconfigurations.
 
 **Debugging**:
 - **Error**: `No such container: sandbox-proxy`
   - **Cause**: The `sandbox-proxy` container does not exist or was created with an auto-generated name (e.g., `cool_aryabhata`).
-  - **Fix**: Check for existing containers with `docker ps -a`. If a proxy container exists with a different name, rename it using `docker rename <old-name> sandbox-proxy`. If no proxy container exists, run the `docker run` command above to create it.
+  - **Fix**: Check for existing containers with `docker ps -a`. If a proxy container exists with a different name (e.g., `cool_aryabhata`), remove it with `docker rm -f <name>`. Then create a new `sandbox-proxy` using the `docker run` command above.
 - **Error**: `Conflict. The container name "/sandbox-proxy" is already in use`
   - **Cause**: A previous attempt created a `sandbox-proxy` container that is stopped or misconfigured.
   - **Fix**: Remove the existing container:
     ```bash
-    docker rm sandbox-proxy
+    docker rm -f sandbox-proxy
     ```
     Then re-run the `docker run` command above.
 - **Error**: `container <id> not attached to default bridge network`
@@ -84,7 +84,14 @@ This practical introduces **Apache Spark**, a powerful big data processing engin
     ```bash
     docker network connect bridge sandbox-hdp
     ```
-    Then re-run the `docker run` command for `sandbox-proxy` with `--network bridge`.
+    Then re-run the `docker run` command for `sandbox-proxy`.
+- **Error**: `cool_aryabhata` container exists with only `80/tcp` port
+  - **Cause**: A misconfigured proxy container was created without proper port mappings.
+  - **Fix**: Remove the container:
+    ```bash
+    docker rm -f cool_aryabhata
+    ```
+    Then create a new `sandbox-proxy` with the correct `docker run` command above.
 
 ### Task A2: Verify SSH Port
 **Objective**: Confirm SSH access is available on port 2222.
@@ -99,10 +106,14 @@ This practical introduces **Apache Spark**, a powerful big data processing engin
    2222/tcp -> 0.0.0.0:2222
    ...
    ```
-2. If the port is missing, ensure the `sandbox-proxy` container was created with the correct port mappings (see Task A1). Remove and recreate the container if needed:
+2. If the port is missing or `sandbox-proxy` is not running, ensure the container was created correctly (see Task A1). Remove and recreate it if needed:
    ```bash
-   docker rm sandbox-proxy
+   docker rm -f sandbox-proxy
    docker run -d --name sandbox-proxy --network bridge -p 2222:22 -p 4200:4200 -p 8020:8020 -p 8042:8042 -p 8080:8080 -p 8188:8188 -p 8983:8983 -p 10000:10000 -p 10001:10001 -p 10002:10002 -p 11000:11000 -p 15000:15000 -p 16000:16000 -p 18080:18080 -p 19888:19888 -p 21000:21000 -p 33553:33553 -p 39419:39419 -p 42111:42111 -p 50070:50070 -p 50075:50075 -p 50090:50090 -p 50111:50111 -p 60000:60000 -p 60080:60080 -p 61080:61080 -p 61888:61888 -p 62000:62000 hortonworks/sandbox-proxy:1.0
+   ```
+3. If `cool_aryabhata` or another misconfigured proxy container is running, remove it:
+   ```bash
+   docker rm -f cool_aryabhata
    ```
 
 **Why**: Port 2222 enables SSH connections to the sandbox, necessary for accessing the PySpark shell.
@@ -110,38 +121,119 @@ This practical introduces **Apache Spark**, a powerful big data processing engin
 **Debugging**:
 - **Error**: No output from `docker port sandbox-proxy` or missing 2222 mapping
   - **Cause**: The `sandbox-proxy` container was created without proper port mappings or is not running.
-  - **Fix**: Verify the container exists and is running with `docker ps`. If it exists but has no port mappings, remove and recreate it using the `docker run` command from Task A1.
+  - **Fix**: Verify the container exists and is running with `docker ps`. If it exists but has incorrect ports (e.g., only `80/tcp`), remove it with `docker rm -f sandbox-proxy` and recreate it using the `docker run` command above.
+- **Error**: `cool_aryabhata` appears with only `80/tcp`
+  - **Cause**: A misconfigured proxy container is running instead of `sandbox-proxy`.
+  - **Fix**: Remove the misconfigured container:
+    ```bash
+    docker rm -f cool_aryabhata
+    ```
+    Then recreate `sandbox-proxy` with the correct `docker run` command.
 
 ### Task A3: Connect via PuTTY
 **Objective**: Log into the sandbox using SSH.
 
 **Activity**:
 1. Open **PuTTY** and configure:
-   - **Host**: `sandbox.hortonworks.com`
+   - **Host**: `sandbox.hortonworks.com` (or `localhost` if `sandbox.hortonworks.com` fails)
    - **Port**: `2222`
    - **Connection type**: SSH
 2. Click **Open**, accept any security alert (key fingerprint), and log in:
    - **Username**: `root`
    - **Password**: Your password (e.g., `hadoop1234`)
-3. **If “Access denied”**:
-   - Access the container directly:
-     ```bash
-     docker exec -it sandbox-hdp bash
-     ```
-   - Reset the password:
-     ```bash
-     passwd root
-     ```
-     - Enter a secure password (8+ characters, e.g., `hadoop1234`).
-     - **Expected Output**:
+3. **Troubleshooting PuTTY Connection Issues**:
+   - **If “Access denied”**:
+     - Access the `sandbox-hdp` container directly:
+       ```bash
+       docker exec -it sandbox-hdp bash
        ```
-       passwd: password updated successfully
+     - Reset the root password:
+       ```bash
+       passwd root
        ```
-   - Exit:
-     ```bash
-     exit
-     ```
-   - Retry PuTTY login.
+       - Enter a secure password (8+ characters, e.g., `hadoop1234`).
+       - **Expected Output**:
+         ```
+         passwd: password updated successfully
+         ```
+     - Exit:
+       ```bash
+       exit
+       ```
+     - Retry PuTTY login with the new password.
+   - **If “Network error: Connection refused”**:
+     - Verify `sandbox-proxy` is running and exposing port 2222:
+       ```bash
+       docker ps
+       docker port sandbox-proxy
+       ```
+       **Expected Output**:
+       ```
+       2222/tcp -> 0.0.0.0:2222
+       ...
+       ```
+     - If port 2222 is missing, recreate `sandbox-proxy`:
+       ```bash
+       docker rm -f sandbox-proxy
+       docker run -d --name sandbox-proxy --network bridge -p 2222:22 -p 4200:4200 -p 8020:8020 -p 8042:8042 -p 8080:8080 -p 8188:8188 -p 8983:8983 -p 10000:10000 -p 10001:10001 -p 10002:10002 -p 11000:11000 -p 15000:15000 -p 16000:16000 -p 18080:18080 -p 19888:19888 -p 21000:21000 -p 33553:33553 -p 39419:39419 -p 42111:42111 -p 50070:50070 -p 50075:50075 -p 50090:50090 -p 50111:50111 -p 60000:60000 -p 60080:60080 -p 61080:61080 -p 61888:61888 -p 62000:62000 hortonworks/sandbox-proxy:1.0
+       ```
+     - Check for misconfigured containers (e.g., `cool_aryabhata` with only `80/tcp`):
+       ```bash
+       docker ps
+       ```
+       If present, remove it:
+       ```bash
+       docker rm -f cool_aryabhata
+       ```
+     - Verify the SSH service is running in `sandbox-hdp`:
+       ```bash
+       docker exec -it sandbox-hdp bash
+       service sshd status
+       ```
+       If not running, start it:
+       ```bash
+       service sshd start
+       ```
+       If `sshd` is missing, install it:
+       ```bash
+       yum install -y openssh-server
+       sshd -t
+       service sshd start
+       exit
+       ```
+   - **If “Network error: Connection timed out”**:
+     - Test connectivity to port 2222:
+       ```bash
+       telnet localhost 2222
+       ```
+       If it fails, check for port conflicts:
+       ```bash
+       netstat -an | findstr 2222
+       ```
+       If port 2222 is in use, stop the conflicting application or recreate `sandbox-proxy` with a different port (e.g., `-p 2223:22`):
+       ```bash
+       docker rm -f sandbox-proxy
+       docker run -d --name sandbox-proxy --network bridge -p 2223:22 -p 4200:4200 -p 8020:8020 -p 8042:8042 -p 8080:8080 -p 8188:8188 -p 8983:8983 -p 10000:10000 -p 10001:10001 -p 10002:10002 -p 11000:11000 -p 15000:15000 -p 16000:16000 -p 18080:18080 -p 19888:19888 -p 21000:21000 -p 33553:33553 -p 39419:39419 -p 42111:42111 -p 50070:50070 -p 50075:50075 -p 50090:50090 -p 50111:50111 -p 60000:60000 -p 60080:60080 -p 61080:61080 -p 61888:61888 -p 62000:62000 hortonworks/sandbox-proxy:1.0
+       ```
+       Then use PuTTY with port `2223`.
+     - Ensure both containers are on the bridge network:
+       ```bash
+       docker network connect bridge sandbox-hdp
+       docker inspect sandbox-hdp --format='{{json .NetworkSettings.Networks}}'
+       docker inspect sandbox-proxy --format='{{json .NetworkSettings.Networks}}'
+       ```
+     - Temporarily disable your firewall or add a rule:
+       ```bash
+       netsh advfirewall firewall add rule name="Docker SSH 2222" dir=in action=allow protocol=TCP localport=2222
+       ```
+   - **If “Server unexpectedly closed network connection”**:
+     - Recheck the SSH service in `sandbox-hdp` (see above).
+     - If the issue persists, recreate `sandbox-hdp`:
+       ```bash
+       docker rm -f sandbox-hdp
+       docker run -d --name sandbox-hdp --network bridge -p 22:22 -p 4200:4200 -p 8080:8080 hortonworks/sandbox-hdp:2.6.5
+       ```
+       Then recreate `sandbox-proxy` as shown above.
 
 **Why**: SSH access allows you to interact with the sandbox’s Linux environment and run Spark commands.
 
